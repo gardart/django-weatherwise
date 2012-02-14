@@ -12,11 +12,6 @@ from django_extensions.db import fields as ext_fields
 from math import radians as rad,degrees as deg
 from decimal import *
 
-class ObservationSource(models.Model):
-	name = models.CharField(max_length=200, null=True, blank=True)
-	url = models.URLField(null=True, blank=True) # observation url, METAR, XML...
-	function = models.CharField(max_length=200, null=True, blank=True)
-
 class StationManager(models.Model):
 	def auto_update(self):
 		sys.path[0] = os.path.normpath(os.path.join(sys.path[0], '..'))
@@ -24,8 +19,8 @@ class StationManager(models.Model):
 
 class Station(models.Model):
 	name = models.CharField(max_length=200, null=True, blank=True)
-	code = models.CharField(max_length=20, unique=True)
-	source = models.ForeignKey(ObservationSource)
+	code = models.CharField(max_length=20)
+	source = models.CharField(max_length=200, null=True, blank=True)
 #	url = models.URLField(null=True, blank=True) # observation url, METAR, XML...
 #	country = CountryField()
 	latitude = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
@@ -37,20 +32,7 @@ class Station(models.Model):
 
 	def get_name(self):
 		return self.name
-
-	def update(self):
-		last_hr = datetime.datetime.now() - datetime.timedelta(hours=1)
-		reports = Observation.objects.filter(station=self, observation_time__gt=last_hr)
-		
-		if reports:
-			report = reports[0] # if weather report has already been generated for this observation time
-		else: # continue if no reports have this timestamp
-			print self.source.function
-			#Returns a tuple of (object, created), where object is the retrieved or created object 
-			#and created is a boolean specifying whether a new object was created.
-			#report, created = Observation.objects.get_or_create(station=self, data=data)
-		return report
-
+	
 	def __unicode__(self):
 		return u'%s' % self.code
 
