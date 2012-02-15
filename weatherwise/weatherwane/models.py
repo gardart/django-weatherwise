@@ -1,4 +1,5 @@
-﻿import os
+﻿# -*- coding: UTF-8 -*-
+import os
 import sys
 import datetime
 import urllib2
@@ -59,10 +60,12 @@ class Observation(models.Model):
 	wind_compass = models.CharField(max_length=4, null=True, blank=True)
 	wind_speed = models.IntegerField(null=True, blank=True)
 	wind_speed_gust = models.IntegerField(null=True, blank=True)
+	wind_speed_max = models.IntegerField(null=True, blank=True)
 	visibility = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
 	temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 	dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 	sky_conditions = models.TextField(null=True, blank=True)
+	cloud_cover = models.IntegerField(null=True, blank=True) # Cloud cover in percentage
 	weather_conditions = models.TextField(null=True, blank=True)
 	sealevel_pressure = models.IntegerField(null=True, blank=True)
 	relative_humidity = models.IntegerField(null=True, blank=True) # (RH = 100-5(temperature_celsius - dewpoint_celsius))
