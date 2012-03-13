@@ -1,11 +1,10 @@
 ﻿# -*- coding: UTF-8 -*-
-import urllib
-from xmstation.dom import minidom
+# usage : python manage.py get_weather_observations
 from pprint import pprint
 from datetime import datetime
-
 from django.db import models
 from django.core.management.base import NoArgsCommand
+from pywsoi import get_weather_from_wsoi
 
 Station = models.get_model("weatherwane", "Station")
 Observation = models.get_model("weatherwane", "Observation")
@@ -20,14 +19,16 @@ class Command(NoArgsCommand):
         verbosity = int(options.get('verbosity', NORMAL))
         created_count = 0
         for station in Station.objects.all():
-            weather = get_weather_from_wsoi(station.code,station.time,station.language)
+#            weather = get_weather_from_wsoi(station.code,station.time,station.language)
+	    weather = get_weather_from_wsoi(station.code,'3h','en')
+	    pprint(weather)
             if verbosity > NORMAL:
                 pprint(weather)
-            timestamp_parts = map(int, weather['guid'].split("_")[1:-1])
-            timestamp = datetime(*timestamp_parts)
+#            timestamp_parts = map(int, weather['guid'].split("_")[1:-1])
+#            timestamp = datetime(*timestamp_parts)
             log, created = Observation.objects.get_or_create(
                  station=l,
-                 timestamp=timestamp,
+#                 timestamp=timestamp,
                  defaults={
 					'temperature': weather['T'],
 					'dewpoint': weather['TD'],
