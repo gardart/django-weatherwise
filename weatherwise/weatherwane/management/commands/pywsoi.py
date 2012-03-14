@@ -2,6 +2,7 @@
 import urllib, urllib, urllib
 import re
 from xml.dom import minidom
+from pprint import pprint
 
 
 WSOI_WEATHER_URL   = 'http://xmlweather.vedur.is/?op_w=xml&type=obs&view=xml&params=T;TD;D;F;FX;FG;N;V;W;P;RH;R;SNC;SND;SED&ids=%s&time=%s&lang=%s'
@@ -46,4 +47,5 @@ def get_weather_from_wsoi(station_id, time, lang):
 			pass
 
 	dom.unlink()
+	pprint(url)
 	return weather_data

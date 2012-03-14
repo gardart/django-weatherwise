@@ -46,7 +46,7 @@ class ObservationManager(models.Manager):
 class Observation(models.Model):
 	station = models.ForeignKey(Station)
 	data = models.TextField() # Raw data generated from observation
-	timestamp = models.DateTimeField(auto_now_add=True) # Add timestamp to observation
+	timestamp = models.DateTimeField() # Add timestamp to observation
 
 #**************************************************************
 #---* Observation Data
