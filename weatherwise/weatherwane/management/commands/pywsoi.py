@@ -4,7 +4,7 @@ import re
 from xml.dom import minidom
 
 
-WSOI_WEATHER_URL   = 'http://xmlweather.vedur.is/?op_w=xml&type=obs&view=xml&params=T;D;F;N;W;P;RH;SND;R&ids=%s&time=%s&lang=%s'
+WSOI_WEATHER_URL   = 'http://xmlweather.vedur.is/?op_w=xml&type=obs&view=xml&params=T;TD;D;F;FX;FG;N;V;W;P;RH;R;SNC;SND;SED&ids=%s&time=%s&lang=%s'
 
 def get_weather_from_wsoi(station_id, time, lang):
 	url = WSOI_WEATHER_URL % (station_id, time, lang)

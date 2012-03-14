@@ -24,11 +24,12 @@ class Command(NoArgsCommand):
 	    pprint(weather)
             if verbosity > NORMAL:
                 pprint(weather)
-#            timestamp_parts = map(int, weather['guid'].split("_")[1:-1])
+            timestamp_parts = map(int, weather['time'].split("-")[1:-1])
+#	    timestamp = datetime(weather['time'])
 #            timestamp = datetime(*timestamp_parts)
             log, created = Observation.objects.get_or_create(
-                 station=l,
-#                 timestamp=timestamp,
+                 station=station,
+                 timestamp=weather['time'],
                  defaults={
 					'temperature': weather['T'],
 					'dewpoint': weather['TD'],
@@ -42,9 +43,10 @@ class Command(NoArgsCommand):
 					'weather_conditions': weather['W'],
 					'sealevel_pressure': weather['P'],
 					'precipitation': weather['R'],
-					'snc': weather['SNC'],
-					'snd': weather['SND'],
-					'sed': weather['SED'],
+					'observation_time': weather['time'],
+		#			'snc': weather['SNC'],
+		#			'snd': weather['SND'],
+	#				'sed': weather['SED'],
                     }
                  )
             if created:
