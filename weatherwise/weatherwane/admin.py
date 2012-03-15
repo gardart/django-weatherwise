@@ -7,7 +7,25 @@ class StationAdmin(admin.ModelAdmin):
     search_fields = ('code',)
 
 class ObservationAdmin(admin.ModelAdmin):
-    list_display = ('station', 'observation_time', 'temperature', 'wind_speed', 'wind_compass', 'visibility', 'sealevel_pressure', 'sky_conditions', 'weather_conditions')
+    list_display = ('station', 
+		'observation_time', 
+		'temperature', 
+		'dewpoint',
+		'wind_speed', 
+		'wind_compass',
+		'wind_speed_gust',
+		'wind_speed_max',
+		'visibility', 
+		'sealevel_pressure',
+		'relative_humidity',
+		'precipitation',
+		'cloud_cover',
+		'sky_conditions',
+		'weather_conditions',
+		'snc',
+		'snd',
+		'sed'
+)
     date_hierarchy = 'observation_time'
 
 

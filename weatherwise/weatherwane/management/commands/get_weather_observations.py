@@ -24,9 +24,6 @@ class Command(NoArgsCommand):
 	    pprint(weather)
             if verbosity > NORMAL:
                 pprint(weather)
-            timestamp_parts = map(int, weather['time'].split("-")[1:-1])
-#	    timestamp = datetime(weather['time'])
-#            timestamp = datetime(*timestamp_parts)
             log, created = Observation.objects.get_or_create(
                  station=station,
                  timestamp=weather['time'],
@@ -44,9 +41,9 @@ class Command(NoArgsCommand):
 					'sealevel_pressure': weather['P'],
 					'precipitation': weather['R'],
 					'observation_time': weather['time'],
-		#			'snc': weather['SNC'],
-		#			'snd': weather['SND'],
-	#				'sed': weather['SED'],
+					'snc': weather['SNC'],
+					'snd': weather['SND'],
+					'sed': weather['SED'],
                     }
                  )
             if created:

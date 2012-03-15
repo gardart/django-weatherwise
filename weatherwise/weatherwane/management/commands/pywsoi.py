@@ -41,8 +41,10 @@ def get_weather_from_wsoi(station_id, time, lang):
     
 	for tag in data_structure:
 		try:
-			#weather_data[tag] = (current_observation[0].getElementsByTagName(tag)[0]).childNodes[0].data.encode('utf-8')
-			weather_data[tag] = (current_observation[0].getElementsByTagName(tag)[0]).childNodes[0].data
+			if (current_observation[0].getElementsByTagName(tag)[0]).childNodes.length != 0: #check if there is a value in the tag
+				weather_data[tag] = (current_observation[0].getElementsByTagName(tag)[0]).childNodes[0].data
+			else: # if no value then fill the tag with an empty string
+				weather_data[tag] = None
 		except IndexError:
 			pass
 
