@@ -45,8 +45,7 @@ class ObservationManager(models.Manager):
 
 class Observation(models.Model):
 	station = models.ForeignKey(Station)
-	data = models.TextField() # Raw data generated from observation
-	timestamp = models.DateTimeField() # Add timestamp to observation
+	data = models.TextField(null=True, blank=True) # Raw data generated from observation
 
 #**************************************************************
 #---* Observation Data
@@ -55,13 +54,12 @@ class Observation(models.Model):
 	observation_type = models.CharField(max_length=5, null=True, blank=True) # METAR, SPECI, XML
 	observation_cycle = models.IntegerField(null=True, blank=True) # a number between 0 and 23
 
-	observation_time = models.DateTimeField(null=True, blank=True)
+	observation_time = models.DateTimeField()
 
 	wind_compass = models.CharField(max_length=4, null=True, blank=True)
 	wind_speed = models.IntegerField(null=True, blank=True)
 	wind_speed_gust = models.IntegerField(null=True, blank=True)
 	wind_speed_max = models.IntegerField(null=True, blank=True)
-#	visibility = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
 	visibility = models.CharField(max_length=5, null=True, blank=True)
 	temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
 	dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
@@ -114,3 +112,5 @@ class Observation(models.Model):
 		self.sky_conditions = '%s' % metar.sky_conditions()
 		self.weather_conditions = '%s' % metar.present_weather()
 		self.relative_humidity = 100-5*(metar.temp.value(units='c')-metar.dewpt.value(units='c'))
+
+# SkÃ½ringar

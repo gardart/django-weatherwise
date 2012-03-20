@@ -1,0 +1,15 @@
+Vindhraðir - skýringar
+m/s	 	Heiti	 		Áhrif á landi
+0-0,2 		Logn	 		Logn, reyk leggur beint upp.
+0,3-1,5 	Andvari 		Vindstefnu má sjá af reyk, flögg hreyfast ekki.
+1,6-3,3 	Kul	 		Vindblær finnst á andliti, skrjáfar í laufi, lítil flögg bærast.
+3,4-5,4 	Gola 			Breiðir úr léttum flöggum, lauf og smágreinar titra.
+5,5-7,9 	Stinningsgola 		Laust ryk og pappírssneplar taka að fjúka, litlar trjágreinar bærast. Lausamjöll byrjar að hreyfast.
+8,0-10,7 	Kaldi	 		Lítil lauftré taka að sveigjast. Freyðandi bárur á stöðuvötnum. Lausamjöll hreyfist.
+10,8-13,8 	Stinningskaldi 		Stórar greinar svigna. Hvín í línum. Erfitt að nota regnhlífar. Lágarenningur viðvarandi.
+13,9-17,1 	Allhvass vindur		Stór tré sveigjast til. Þreytandi að ganga á móti vindi. Skyggni slæmt í snjókomu. 
+17,2-20,7  	Hvassviðri 		Trjágreinar brotna. Erfitt að ganga á móti vindinum. Menn baksa á móti vindi. Skyggni í snjókomu verður lítið sem ekkert. 
+20,8-24,4  	Stormur 		Lítilsháttar skemmdir á mannvirkjum. Varla hægt að ráða sér á bersvæði. Glórulaus bylur ef snjóar.  
+24,5-28,4  	Rok	 		Fremur sjaldgæft í innsveitum. Tré rifna upp með rótum, talsverðar skemmdir á mannvirkjum.  
+28,5-32,6  	Ofsaveður 		Miklar skemmdir á mannvirkjum. Útivera á bersvæði hættuleg. Rýfur hjarn, lyftir möl og grjóti.  
+>= 32,7   	Fárviðri  		Allt lauslegt fýkur, þar á meðal möl og jafnvel stórir steinar. Kyrrstæðir bílar geta oltið eða fokið. Heil þök tekur af húsum.

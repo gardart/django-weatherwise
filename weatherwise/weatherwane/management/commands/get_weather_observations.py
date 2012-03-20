@@ -16,17 +16,16 @@ SILENT, NORMAL, VERBOSE = 0, 1, 2
 class Command(NoArgsCommand):
     help = "Aggregates data from weather feed"
     def handle_noargs(self, **options):
-        verbosity = int(options.get('verbosity', NORMAL))
+        verbosity = int(options.get('verbosity', VERBOSE))
         created_count = 0
         for station in Station.objects.all():
-#            weather = get_weather_from_wsoi(station.code,station.time,station.language)
 	    weather = get_weather_from_wsoi(station.code,'3h','en')
 	    pprint(weather)
             if verbosity > NORMAL:
                 pprint(weather)
             log, created = Observation.objects.get_or_create(
                  station=station,
-                 timestamp=weather['time'],
+                 observation_time=weather['time'],
                  defaults={
 					'temperature': weather['T'],
 					'dewpoint': weather['TD'],
@@ -40,7 +39,6 @@ class Command(NoArgsCommand):
 					'weather_conditions': weather['W'],
 					'sealevel_pressure': weather['P'],
 					'precipitation': weather['R'],
-					'observation_time': weather['time'],
 					'snc': weather['SNC'],
 					'snd': weather['SND'],
 					'sed': weather['SED'],
@@ -49,4 +47,7 @@ class Command(NoArgsCommand):
             if created:
                 created_count += 1
         if verbosity > NORMAL:
-            print "New weather logs: %d" % created_count
+            print "New weather observations: %d" % created_count
+	    print log
+	else:
+	    print "No new weather observations"
