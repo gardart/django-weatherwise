@@ -1,3 +1,2 @@
 syntax: glob
-*.db
-*.db*
+*.db.*
