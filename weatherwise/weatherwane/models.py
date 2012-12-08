@@ -2,11 +2,11 @@
 import os
 import sys
 import datetime
-import urllib2
-import urllib
+#import urllib2
+#import urllib
 import ephem # available from http://rhodesmill.org/pyephem
-from xml.dom import minidom
-from dateutil import tz
+#from xml.dom import minidom
+#from dateutil import tz
 #from metar.Metar import Metar # available from http://python-metar.sourceforge.net
 from django.db import models
 from django_extensions.db import fields as ext_fields
@@ -56,19 +56,19 @@ class Observation(models.Model):
 
 	observation_time = models.DateTimeField()
 
-	wind_compass = models.CharField(max_length=4, null=True, blank=True)
-	wind_speed = models.IntegerField(null=True, blank=True)
-	wind_speed_gust = models.IntegerField(null=True, blank=True)
-	wind_speed_max = models.IntegerField(null=True, blank=True)
-	visibility = models.CharField(max_length=5, null=True, blank=True)
-	temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-	dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
-	sky_conditions = models.TextField(null=True, blank=True)
-	cloud_cover = models.IntegerField(null=True, blank=True) # Cloud cover in percentage
-	weather_conditions = models.TextField(null=True, blank=True)
-	sealevel_pressure = models.IntegerField(null=True, blank=True)
-	relative_humidity = models.IntegerField(null=True, blank=True) # (RH = 100-5(temperature_celsius - dewpoint_celsius))
-	precipitation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+	wind_compass = models.CharField(max_length=4, null=True, blank=True, verbose_name='WC')
+	wind_speed = models.IntegerField(null=True, blank=True, verbose_name='WS')
+	wind_speed_gust = models.IntegerField(null=True, blank=True, verbose_name='WSG')
+	wind_speed_max = models.IntegerField(null=True, blank=True, verbose_name='WSM')
+	visibility = models.CharField(max_length=5, null=True, blank=True, verbose_name='VIS')
+	temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name='T')
+	dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name='DEW')
+	sky_conditions = models.TextField(null=True, blank=True, verbose_name='SKY')
+	cloud_cover = models.IntegerField(null=True, blank=True, verbose_name='CLC') # Cloud cover in percentage
+	weather_conditions = models.TextField(null=True, blank=True, verbose_name='CON')
+	sealevel_pressure = models.IntegerField(null=True, blank=True, verbose_name='P')
+	relative_humidity = models.IntegerField(null=True, blank=True, verbose_name='RH') # (RH = 100-5(temperature_celsius - dewpoint_celsius))
+	precipitation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name='PRE')
 	snc = models.TextField(null=True, blank=True)
 	snd = models.IntegerField(null=True, blank=True)
 	sed = models.TextField(null=True, blank=True)
@@ -80,9 +80,10 @@ class Observation(models.Model):
 
 	def get_lunar_object(self):
 		location = ephem.Observer()
-		location.lon = self.station.longitude
-		location.lat = self.station.latitude
+		location.lon = rad(self.station.longitude)
+		location.lat = rad(self.station.latitude)
 		location.elevation = self.station.elevation
+		location.date = self.observation_time
 		return ephem.Moon(location)
 
 	def save(self, **kwargs):
@@ -113,4 +114,15 @@ class Observation(models.Model):
 		self.weather_conditions = '%s' % metar.present_weather()
 		self.relative_humidity = 100-5*(metar.temp.value(units='c')-metar.dewpt.value(units='c'))
 
-# SkÃ½ringar
+	def moon_dec(self):
+		moon = self.get_lunar_object()
+		return round(deg(moon.dec),1)
+
+        def moon_alt(self):
+                moon = self.get_lunar_object()
+                return round(deg(moon.alt),1)
+
+        def moon_phase(self):
+                moon = self.get_lunar_object()
+                return round(moon.phase,1)
+
