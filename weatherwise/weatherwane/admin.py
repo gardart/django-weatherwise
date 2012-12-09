@@ -77,8 +77,8 @@ class ObservationAdmin(admin.ModelAdmin):
      		'moon_dec'
 )
     date_hierarchy = 'observation_time'
-    actions = (export_model_as_csv,)
-    exportable_fields = ('temperature','wind_speed',)
+    actions = (export_model_as_csv,)	## Action to export data as csv (fields given in exportable_fields arrey)
+    exportable_fields = ('observation_time','temperature','wind_speed','wind_compass','wind_speed_gust','wind_speed_max','sealevel_pressure','relative_humidity','precipitation','cloud_cover','weather_conditions','moon_alt','moon_phase','moon_dec',)
 
 
 admin.site.register(Station, StationAdmin)
