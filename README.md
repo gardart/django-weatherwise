@@ -3,13 +3,51 @@ WeatherWise is a Django app that periodically receives weather data from station
 (`http://xmlweather.vedur.is/?op_w=xml&type=obs&view=xml&params=T;TD;D;F;FX;FG;N;V;W;P;RH;R;SNC;SND;SED&ids=%s&time=%s&lang=%s`).
 If the station model is defined, it automatically pulls data from xmlweather service and updates its observation model. Each observation is recorded into the database.
 
-## Installation (Django 5.x)
+## Quickstart (Django 5.x)
+
+### 1) Install
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+```
+
+Optional extras:
+- Charts page: `pip install django-chartit`
+- METAR parsing helper: `pip install python-metar`
+
+### 2) Configure (optional)
+- If needed, create `weatherwise/local_settings.py` to override database or secrets. Defaults use SQLite at `weatherwise/weather.db`.
+
+### 3) Migrate database
+```bash
+python weatherwise/manage.py migrate
+```
+
+### 4) Run health check
+```bash
+python weatherwise/manage.py check
+```
+
+### 5) Create admin user
+```bash
+python weatherwise/manage.py createsuperuser
+```
+
+### 6) Run the server
+```bash
+python weatherwise/manage.py runserver
+```
+Admin is available at `http://127.0.0.1:8000/admin/`.
+
+### Fetch observations from the XML service
+From the project root:
+```bash
+python weatherwise/manage.py get_weather_observations --verbosity 2
+```
+Example cron entry to run hourly (adjust cadence as needed):
+```
+0 * * * * cd /Users/gardartho/code/django-weatherwise && /Users/gardartho/code/django-weatherwise/.venv/bin/python weatherwise/manage.py get_weather_observations --verbosity 2 >> /var/log/weatherwise.log 2>&1
 ```
 
 ## Notes

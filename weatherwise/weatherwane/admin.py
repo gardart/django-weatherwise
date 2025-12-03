@@ -42,8 +42,7 @@ export_model_as_csv.short_description = _("Export to CSV")
 
 
 class StationAdmin(admin.ModelAdmin):
-    list_display = ("name", "latitude", "longitude", "auto_update")
-    list_filter = ("auto_update",)
+    list_display = ("name", "latitude", "longitude")
     search_fields = ("code",)
 
 

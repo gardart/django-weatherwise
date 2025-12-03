@@ -6,7 +6,7 @@ from pprint import pprint
 from django.core.management.base import BaseCommand
 
 from ...models import Station
-from ..pywsoi import get_weather_from_wsoi
+from .pywsoi import get_weather_from_wsoi
 
 CARBON_SERVER = "199.175.48.167"
 CARBON_PORT = 2003

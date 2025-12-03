@@ -4,7 +4,7 @@ from pprint import pformat
 from django.core.management.base import BaseCommand
 
 from ...models import Observation, Station
-from ..pywsoi import get_weather_from_wsoi
+from .pywsoi import get_weather_from_wsoi
 
 SILENT, NORMAL, VERBOSE = 0, 1, 2
 

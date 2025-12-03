@@ -7,21 +7,46 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 
 
-class StationManager(models.Manager):
-    def auto_update(self):
-        return self.filter(auto_update=True)
-
-
 class Station(models.Model):
-    name = models.CharField(max_length=200, null=True, blank=True)
-    code = models.CharField(max_length=20)
-    source = models.CharField(max_length=200, null=True, blank=True)
-    latitude = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
-    longitude = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
-    elevation = models.IntegerField(null=True, blank=True)
-    auto_update = models.BooleanField(default=False)
+    name = models.CharField(
+        max_length=200,
+        default="",
+        blank=False,
+        help_text="Required station name (e.g., Akureyri)",
+    )
+    code = models.CharField(
+        max_length=20,
+        default="",
+        blank=False,
+        help_text="Required station code from the XML feed (e.g., 3471)",
+    )
+    source = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        help_text="Optional source/provider note (e.g., Icelandic Met Office)",
+    )
+    latitude = models.DecimalField(
+        max_digits=11,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Latitude in decimal degrees (e.g., 63.962800)",
+    )
+    longitude = models.DecimalField(
+        max_digits=11,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Longitude in decimal degrees (e.g., -20.566900)",
+    )
+    elevation = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Elevation in meters above sea level (e.g., 52)",
+    )
 
-    objects = StationManager()
+    objects = models.Manager()
 
     class Meta:
         ordering = ["code"]
