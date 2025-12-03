@@ -1,9 +1,9 @@
-# WeatherWise - Django model for weatherstations and observations
+# WeatherWise - Django model for weatherstations and observations using Icelandic Met Office
 WeatherWise is a Django app that periodically receives weather data from stations (XML). It currently targets the Icelandic Weather XML service
 (`http://xmlweather.vedur.is/?op_w=xml&type=obs&view=xml&params=T;TD;D;F;FX;FG;N;V;W;P;RH;R;SNC;SND;SED&ids=%s&time=%s&lang=%s`).
 If the station model is defined, it automatically pulls data from xmlweather service and updates its observation model. Each observation is recorded into the database.
 
-## Quickstart (Django 5.x)
+## Quickstart
 
 ### 1) Install
 ```bash
@@ -45,9 +45,14 @@ From the project root:
 ```bash
 python weatherwise/manage.py get_weather_observations --verbosity 2
 ```
+Wrapper script (uses `.venv` if present) at `scripts/fetch_observations.sh`:
+```bash
+chmod +x scripts/fetch_observations.sh
+scripts/fetch_observations.sh
+```
 Example cron entry to run hourly (adjust cadence as needed):
 ```
-0 * * * * cd /Users/gardartho/code/django-weatherwise && /Users/gardartho/code/django-weatherwise/.venv/bin/python weatherwise/manage.py get_weather_observations --verbosity 2 >> /var/log/weatherwise.log 2>&1
+0 * * * * /path/to/django-weatherwise/scripts/fetch_observations.sh >> /var/log/weatherwise.log 2>&1
 ```
 
 ## Notes
