@@ -1,11 +1,6 @@
+from .settings_default import *
+
 try:
-    from settings_default import *
+    from .local_settings import *  # type: ignore
 except ImportError:
     pass
-
-#INTERNAL_IPS = ('127.0.0.1',)
-#MIDDLEWARE_CLASSES += ('debug_toolbar.middleware.DebugToolbarMiddleware',)
-INSTALLED_APPS += (
-#		'debug_toolbar',
-		'weatherwane',
-		)

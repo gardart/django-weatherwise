@@ -1,53 +1,65 @@
-﻿# -*- coding: UTF-8 -*-
-# usage : python manage.py get_weather_observations
-from pprint import pprint
-from datetime import datetime
-from django.db import models
-from django.core.management.base import NoArgsCommand
-from pywsoi import get_weather_from_wsoi
+from datetime import datetime, timezone
+from pprint import pformat
 
-Station = models.get_model("weatherwane", "Station")
-Observation = models.get_model("weatherwane", "Observation")
+from django.core.management.base import BaseCommand
+
+from ...models import Observation, Station
+from ..pywsoi import get_weather_from_wsoi
 
 SILENT, NORMAL, VERBOSE = 0, 1, 2
 
 
-
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     help = "Aggregates data from weather feed"
-    def handle_noargs(self, **options):
-        verbosity = int(options.get('verbosity', VERBOSE))
+
+    def handle(self, *args, **options):
+        verbosity = int(options.get("verbosity", VERBOSE))
         created_count = 0
+        last_log = None
+
         for station in Station.objects.all():
-	    weather = get_weather_from_wsoi(station.code,'3h','en')
-	    pprint(weather)
+            weather = get_weather_from_wsoi(station.code, "3h", "en")
             if verbosity > NORMAL:
-                pprint(weather)
+                self.stdout.write(pformat(weather))
+
+            observation_time = self._parse_timestamp(weather.get("time"))
             log, created = Observation.objects.get_or_create(
-                 station=station,
-                 observation_time=weather['time'],
-                 defaults={
-					'temperature': weather['T'],
-					'dewpoint': weather['TD'],
-					'relative_humidity': weather['RH'],
-					'wind_compass': weather['D'],
-					'wind_speed': weather['F'],
-					'wind_speed_gust': weather['FG'],
-					'wind_speed_max': weather['FX'],
-					'visibility': weather['V'],
-					'cloud_cover': weather['N'],
-					'weather_conditions': weather['W'],
-					'sealevel_pressure': weather['P'],
-					'precipitation': weather['R'],
-					'snc': weather['SNC'],
-					'snd': weather['SND'],
-					'sed': weather['SED'],
-                    }
-                 )
+                station=station,
+                observation_time=observation_time,
+                defaults={
+                    "temperature": weather.get("T"),
+                    "dewpoint": weather.get("TD"),
+                    "relative_humidity": weather.get("RH"),
+                    "wind_compass": weather.get("D"),
+                    "wind_speed": weather.get("F"),
+                    "wind_speed_gust": weather.get("FG"),
+                    "wind_speed_max": weather.get("FX"),
+                    "visibility": weather.get("V"),
+                    "cloud_cover": weather.get("N"),
+                    "weather_conditions": weather.get("W"),
+                    "sealevel_pressure": weather.get("P"),
+                    "precipitation": weather.get("R"),
+                    "snc": weather.get("SNC"),
+                    "snd": weather.get("SND"),
+                    "sed": weather.get("SED"),
+                },
+            )
             if created:
                 created_count += 1
+            last_log = log
+
         if verbosity > NORMAL:
-            print "New weather observations: %d" % created_count
-	    print log
-	else:
-	    print "No new weather observations"
+            self.stdout.write(f"New weather observations: {created_count}")
+            if last_log:
+                self.stdout.write(str(last_log))
+        elif verbosity > SILENT:
+            message = "No new weather observations" if created_count == 0 else f"New weather observations: {created_count}"
+            self.stdout.write(message)
+
+    def _parse_timestamp(self, value):
+        if not value:
+            return None
+        try:
+            return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            return None
