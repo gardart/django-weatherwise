@@ -71,3 +71,58 @@ Example cron entry to run hourly (adjust cadence as needed):
 - The Icelandic XML weather service data is parsed with `weatherwise/weatherwane/management/commands/pywsoi.py`.
 - The chart view in `weatherwane/charts/views.py` expects `django-chartit` (or a compatible fork) to be installed. Install it separately if you need the chart page. 
 - The `Observation.updatemetar` helper requires the `python-metar` package; it is not pinned in `requirements.txt` because compatibility with Django 5/Python 3 may vary.
+
+## Deploying with Nginx + Gunicorn
+
+Minimal production checklist:
+- Set environment variables: `DJANGO_SETTINGS_MODULE=weatherwise.settings`, `DJANGO_SECRET_KEY=...`, `DJANGO_ALLOWED_HOSTS=example.com`, `DJANGO_DEBUG=False`.
+- Install production deps (plus `gunicorn`): `pip install -r requirements.txt gunicorn`.
+- Migrate: `python weatherwise/manage.py migrate`.
+- Collect static files: `python weatherwise/manage.py collectstatic`.
+- Run Gunicorn: `gunicorn weatherwise.wsgi:application --bind 127.0.0.1:8000` (or a unix socket).
+
+Example systemd service (adjust paths/users):
+```
+[Unit]
+Description=Gunicorn for django-weatherwise
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/django-weatherwise
+Environment="DJANGO_SETTINGS_MODULE=weatherwise.settings"
+Environment="DJANGO_SECRET_KEY=change-me"
+Environment="DJANGO_ALLOWED_HOSTS=example.com"
+Environment="DJANGO_DEBUG=False"
+ExecStart=/path/to/django-weatherwise/.venv/bin/gunicorn weatherwise.wsgi:application --bind unix:/run/weatherwise.sock --workers 3
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Example Nginx server block (static served directly, app proxied to Gunicorn):
+```
+server {
+    listen 80;
+    server_name example.com;
+
+    # Static files
+    location /static/ {
+        alias /path/to/django-weatherwise/weatherwise/staticfiles/;
+    }
+
+    location / {
+        proxy_pass http://unix:/run/weatherwise.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Don’t forget to:
+- `chmod +x scripts/fetch_observations.sh` and schedule it via cron/systemd timer if you want automatic fetches.
+- Reload systemd/Nginx after changes.
