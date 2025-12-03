@@ -40,6 +40,18 @@ python weatherwise/manage.py runserver
 ```
 Admin is available at `http://127.0.0.1:8000/admin/`.
 
+### 7) Add a weather station in the admin
+1. Visit `http://127.0.0.1:8000/admin/` and log in with your superuser.
+2. Open “Stations” and click “Add station”.
+3. Fill required fields:
+   - Name (e.g., Akureyri)
+   - Code from the XML feed (e.g., 3471)
+4. Optional fields:
+   - Source/provider note
+   - Latitude/Longitude in decimal degrees (e.g., 63.962800 / -20.566900)
+   - Elevation in meters
+5. Save. You can now fetch observations for this station via the management command or cron.
+
 ### Fetch observations from the XML service
 From the project root:
 ```bash
