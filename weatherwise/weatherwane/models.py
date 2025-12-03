@@ -1,128 +1,154 @@
-﻿# -*- coding: UTF-8 -*-
-import os
-import sys
-import datetime
-#import urllib2
-#import urllib
-import ephem # available from http://rhodesmill.org/pyephem
-#from xml.dom import minidom
-#from dateutil import tz
-#from metar.Metar import Metar # available from http://python-metar.sourceforge.net
-from django.db import models
-from django_extensions.db import fields as ext_fields
-from math import radians as rad,degrees as deg
-from decimal import *
+from decimal import Decimal
+from math import radians as rad, degrees as deg
 
-class StationManager(models.Model):
-	def auto_update(self):
-		sys.path[0] = os.path.normpath(os.path.join(sys.path[0], '..'))
-		return self.filter(auto_update__exact=True)
+import ephem  # available from http://rhodesmill.org/pyephem
+from dateutil import tz
+from django.core.exceptions import ImproperlyConfigured
+from django.db import models
+
 
 class Station(models.Model):
-	name = models.CharField(max_length=200, null=True, blank=True)
-	code = models.CharField(max_length=20)
-	source = models.CharField(max_length=200, null=True, blank=True)
-#	url = models.URLField(null=True, blank=True) # observation url, METAR, XML...
-#	country = CountryField()
-	latitude = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
-	longitude = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
-	elevation = models.IntegerField(null=True, blank=True)
-	auto_update = models.BooleanField(default=False)
+    name = models.CharField(
+        max_length=200,
+        default="",
+        blank=False,
+        help_text="Required station name (e.g., Akureyri)",
+    )
+    code = models.CharField(
+        max_length=20,
+        default="",
+        blank=False,
+        help_text="Required station code from the XML feed (e.g., 3471)",
+    )
+    source = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        help_text="Optional source/provider note (e.g., Icelandic Met Office)",
+    )
+    latitude = models.DecimalField(
+        max_digits=11,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Latitude in decimal degrees (e.g., 63.962800)",
+    )
+    longitude = models.DecimalField(
+        max_digits=11,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Longitude in decimal degrees (e.g., -20.566900)",
+    )
+    elevation = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Elevation in meters above sea level (e.g., 52)",
+    )
 
-	objects = StationManager()
+    objects = models.Manager()
 
-	def get_name(self):
-		return self.name
-	
-	def __unicode__(self):
-		return u'%s' % self.code
+    class Meta:
+        ordering = ["code"]
+
+    def get_name(self):
+        return self.name
+
+    def __str__(self):
+        return self.name or self.code
+
 
 class ObservationManager(models.Manager):
-	def twenty_four_newest(self):
-		return self.order_by('-timestamp')[:24]
-	def all(self, limit=None):
-		return self.order_by('-timestamp')
+    def get_queryset(self):
+        return super().get_queryset().order_by("-observation_time")
+
+    def twenty_four_newest(self):
+        return self.get_queryset()[:24]
+
 
 class Observation(models.Model):
-	station = models.ForeignKey(Station)
-	data = models.TextField(null=True, blank=True) # Raw data generated from observation
+    station = models.ForeignKey(Station, on_delete=models.CASCADE)
+    data = models.TextField(null=True, blank=True)
+    observation_type = models.CharField(max_length=5, null=True, blank=True)
+    observation_cycle = models.IntegerField(null=True, blank=True)
+    observation_time = models.DateTimeField(null=True, blank=True)
+    wind_compass = models.CharField(max_length=4, null=True, blank=True, verbose_name="WC")
+    wind_speed = models.IntegerField(null=True, blank=True, verbose_name="WS")
+    wind_speed_gust = models.IntegerField(null=True, blank=True, verbose_name="WSG")
+    wind_speed_max = models.IntegerField(null=True, blank=True, verbose_name="WSM")
+    visibility = models.CharField(max_length=5, null=True, blank=True, verbose_name="VIS")
+    temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name="T")
+    dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name="DEW")
+    sky_conditions = models.TextField(null=True, blank=True, verbose_name="SKY")
+    cloud_cover = models.IntegerField(null=True, blank=True, verbose_name="CLC")
+    weather_conditions = models.TextField(null=True, blank=True, verbose_name="CON")
+    sealevel_pressure = models.IntegerField(null=True, blank=True, verbose_name="P")
+    relative_humidity = models.IntegerField(null=True, blank=True, verbose_name="RH")
+    precipitation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="PRE")
+    snc = models.TextField(null=True, blank=True)
+    snd = models.IntegerField(null=True, blank=True)
+    sed = models.TextField(null=True, blank=True)
 
-#**************************************************************
-#---* Observation Data
-#**************************************************************
+    objects = ObservationManager()
 
-	observation_type = models.CharField(max_length=5, null=True, blank=True) # METAR, SPECI, XML
-	observation_cycle = models.IntegerField(null=True, blank=True) # a number between 0 and 23
+    class Meta:
+        ordering = ["-observation_time"]
 
-	observation_time = models.DateTimeField()
+    def get_metar_object(self):
+        if not self.data:
+            return None
+        try:
+            from metar.Metar import Metar  # Imported lazily to avoid hard dependency unless used
+        except ImportError as exc:
+            raise ImproperlyConfigured("Install python-metar to parse METAR data.") from exc
 
-	wind_compass = models.CharField(max_length=4, null=True, blank=True, verbose_name='WC')
-	wind_speed = models.IntegerField(null=True, blank=True, verbose_name='WS')
-	wind_speed_gust = models.IntegerField(null=True, blank=True, verbose_name='WSG')
-	wind_speed_max = models.IntegerField(null=True, blank=True, verbose_name='WSM')
-	visibility = models.CharField(max_length=5, null=True, blank=True, verbose_name='VIS')
-	temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name='T')
-	dewpoint = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, verbose_name='DEW')
-	sky_conditions = models.TextField(null=True, blank=True, verbose_name='SKY')
-	cloud_cover = models.IntegerField(null=True, blank=True, verbose_name='CLC') # Cloud cover in percentage
-	weather_conditions = models.TextField(null=True, blank=True, verbose_name='CON')
-	sealevel_pressure = models.IntegerField(null=True, blank=True, verbose_name='P')
-	relative_humidity = models.IntegerField(null=True, blank=True, verbose_name='RH') # (RH = 100-5(temperature_celsius - dewpoint_celsius))
-	precipitation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name='PRE')
-	snc = models.TextField(null=True, blank=True)
-	snd = models.IntegerField(null=True, blank=True)
-	sed = models.TextField(null=True, blank=True)
+        return Metar(self.data)
 
-	objects = ObservationManager()
+    def get_lunar_object(self):
+        location = ephem.Observer()
+        location.lon = rad(self.station.longitude)
+        location.lat = rad(self.station.latitude)
+        location.elevation = self.station.elevation
+        location.date = self.observation_time
+        return ephem.Moon(location)
 
-	def get_metar_object(self):
-		return Metar(self.data)
+    def __str__(self):
+        if self.observation_time:
+            return f"{self.station} @ {self.observation_time}"
+        return f"{self.station} observation"
 
-	def get_lunar_object(self):
-		location = ephem.Observer()
-		location.lon = rad(self.station.longitude)
-		location.lat = rad(self.station.latitude)
-		location.elevation = self.station.elevation
-		location.date = self.observation_time
-		return ephem.Moon(location)
+    def updatemetar(self):
+        metar = self.get_metar_object()
+        if not metar:
+            return
+        self.observation_time = metar.time.replace(tzinfo=tz.gettz("UTC"))
+        self.observation_cycle = metar.cycle
+        self.observation_type = metar.type
+        self.observation_mode = metar.mod  # type: ignore[attr-defined]
+        self.temperature = Decimal(str(metar.temp.value(units="c")))
+        self.dewpoint = Decimal(str(metar.dewpt.value(units="c")))
+        self.visibility = str(metar.vis.value(units="KM"))
+        if metar.wind_dir:
+            self.wind_compass = metar.wind_dir.compass()
+        if metar.wind_speed:
+            self.wind_speed = int(round(metar.wind_speed.value(units="mps")))
+        if metar.wind_gust:
+            self.wind_speed_gust = int(metar.wind_gust.value(units="mps"))
+        self.sealevel_pressure = int(metar.press.value(units="mb"))
+        self.sky_conditions = str(metar.sky_conditions())
+        self.weather_conditions = str(metar.present_weather())
+        self.relative_humidity = int(
+            100 - 5 * (metar.temp.value(units="c") - metar.dewpt.value(units="c"))
+        )
 
-	def save(self, **kwargs):
-		super(Observation, self).save(**kwargs)
+    def moon_dec(self):
+        moon = self.get_lunar_object()
+        return round(deg(moon.dec), 1)
 
-	def __unicode__(self):
-		return u'%s' % self.data
+    def moon_alt(self):
+        moon = self.get_lunar_object()
+        return round(deg(moon.alt), 1)
 
-		
-	def updatemetar(self):
-		metar = self.get_metar_object()
-		self.observation_time = metar.time.replace(tzinfo=tz.gettz('UTC')) # provided in UTC, set that so it shows correctly later
-		self.observation_cycle = metar.cycle
-		self.observation_type = metar.type
-		self.observation_mode = metar.mod
-		self.temperature = '%s' % metar.temp.value(units='c')
-		self.dewpoint = '%s' % metar.dewpt.value(units='c')	   
-		self.visibility = '%s' % metar.vis.value(units='KM')
-		if metar.wind_dir:
-			#self.wind_direction = '%s' % int(metar.wind_dir.value())
-			self.wind_compass = metar.wind_dir.compass()
-		if metar.wind_speed:
-			self.wind_speed = '%s' % int(round(metar.wind_speed.value(units='mps')))
-		if metar.wind_gust:
-			self.wind_speed_gust = '%s' % int(metar.wind_gust.value(units='mps'))
-		self.sealevel_pressure = '%s' % int(metar.press.value(units="mb"))
-		self.sky_conditions = '%s' % metar.sky_conditions()
-		self.weather_conditions = '%s' % metar.present_weather()
-		self.relative_humidity = 100-5*(metar.temp.value(units='c')-metar.dewpt.value(units='c'))
-
-	def moon_dec(self):
-		moon = self.get_lunar_object()
-		return round(deg(moon.dec),1)
-
-        def moon_alt(self):
-                moon = self.get_lunar_object()
-                return round(deg(moon.alt),1)
-
-        def moon_phase(self):
-                moon = self.get_lunar_object()
-                return round(moon.phase,1)
-
+    def moon_phase(self):
+        moon = self.get_lunar_object()
+        return round(moon.phase, 1)

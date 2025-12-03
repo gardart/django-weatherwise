@@ -1,45 +1,60 @@
-﻿# -*- coding: UTF-8 -*-
-# usage : python manage.py get_weather_observations
-from pprint import pprint
-from datetime import datetime
-from django.db import models
-from django.core.management.base import NoArgsCommand
-from pywsoi import get_weather_from_wsoi
-import sys
 import time
-from socket import socket
+from socket import create_connection
 
-CARBON_SERVER = '199.175.48.167'
+from django.core.management.base import BaseCommand
+
+from ...models import Observation
+
+CARBON_SERVER = "199.175.48.167"
 CARBON_PORT = 2003
 
-delay = 60 
 
-Station = models.get_model("weatherwane", "Station")
-Observation = models.get_model("weatherwane", "Observation")
+class Command(BaseCommand):
+    help = "Send observations to Graphite"
 
-SILENT, NORMAL, VERBOSE = 0, 1, 2
+    def add_arguments(self, parser):
+        parser.add_argument("--server", default=CARBON_SERVER, help="Graphite Carbon server")
+        parser.add_argument("--port", default=CARBON_PORT, type=int, help="Graphite Carbon port")
+        parser.add_argument("--delay", default=60, type=int, help="Delay between batches in seconds")
 
-sock = socket()
-try:
-  sock.connect( (CARBON_SERVER,CARBON_PORT) )
-except:
-  print "Couldn't connect to %(server)s on port %(port)d, is carbon-agent.py running?" % { 'server':CARBON_SERVER, 'port':CARBON_PORT }
-  sys.exit(1)
+    def handle(self, *args, **options):
+        server = options["server"]
+        port = options["port"]
+        delay = options["delay"]
 
+        observations = Observation.objects.all()
+        if not observations.exists():
+            self.stdout.write("No observations to send")
+            return
 
-class Command(NoArgsCommand):
-    help = "Aggregates data from weather feed"
-    def handle_noargs(self, **options):
-        verbosity = int(options.get('verbosity', VERBOSE))
-        for observation in Observation.objects.all():
-                 station='1'
-		 sock = socket()
-		 lines.append("%s %t %d" % (observation.station,observation.temperature,observation.observation_time))
-		 message = '\n'.join(lines) + '\n' #all lines must end in a newline
-		 print "sending message\n"
-		 print '-' * 80
-		 print message
-		 print
-		 sock.sendall(message)
-  		 time.sleep(delay)
+        try:
+            sock = create_connection((server, port))
+        except OSError:
+            self.stderr.write(f"Couldn't connect to {server} on port {port}, is carbon-agent.py running?")
+            return
 
+        lines = []
+        for observation in observations:
+            if observation.temperature is None:
+                continue
+            station_code = observation.station.code
+            timestamp = (
+                int(observation.observation_time.timestamp())
+                if observation.observation_time
+                else int(time.time())
+            )
+            metric_name = f"stations.{station_code}.temperature"
+            lines.append(f"{metric_name} {observation.temperature} {timestamp}")
+
+        if not lines:
+            self.stdout.write("No metrics created from observations")
+            sock.close()
+            return
+
+        message = "\n".join(lines) + "\n"
+        sock.sendall(message.encode("utf-8"))
+        sock.close()
+        self.stdout.write(f"Sent {len(lines)} metrics to {server}:{port}")
+
+        if delay:
+            time.sleep(delay)
