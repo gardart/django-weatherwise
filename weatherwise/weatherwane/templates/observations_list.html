@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Observations{% endblock %}
+
+{% block content %}
+  <style>
+    /* Light admin-like table styling */
+    table.obs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.obs-table th,
+    table.obs-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #dfe2e5;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.obs-table th {
+      background: #f8f8f8;
+      font-weight: 600;
+    }
+    table.obs-table tr:nth-child(odd) td {
+      background: #fbfbfb;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+  </style>
+
+  <h1>Observations</h1>
+  {% if observations %}
+    <table class="obs-table">
+      <thead>
+        <tr>
+          <th>Station</th>
+          <th>Time (UTC)</th>
+          <th>Temp (°C)</th>
+          <th>Wind (m/s)</th>
+          <th>Compass</th>
+          <th>Gust (m/s)</th>
+          <th>Pressure (mb)</th>
+          <th>Humidity (%)</th>
+          <th>Precip (mm)</th>
+          <th>Moon Alt (°)</th>
+          <th>Moon Phase</th>
+          <th>Moon Dec (°)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obs in observations %}
+          <tr>
+            <td>{{ obs.station.code }}{% if obs.station.name %} — {{ obs.station.name }}{% endif %}</td>
+            <td>{{ obs.observation_time|default:"" }}</td>
+            <td>{{ obs.temperature|default:"" }}</td>
+            <td>{{ obs.wind_speed|default:"" }}</td>
+            <td>{{ obs.wind_compass|default:"" }}</td>
+            <td>{{ obs.wind_speed_gust|default:"" }}</td>
+            <td>{{ obs.sealevel_pressure|default:"" }}</td>
+            <td>{{ obs.relative_humidity|default:"" }}</td>
+            <td>{{ obs.precipitation|default:"" }}</td>
+            <td>{{ obs.moon_alt|default:"" }}</td>
+            <td>{{ obs.moon_phase|default:"" }}</td>
+            <td>{{ obs.moon_dec|default:"" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No observations found.</p>
+  {% endif %}
+{% endblock %}
