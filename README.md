@@ -126,3 +126,102 @@ server {
 Don’t forget to:
 - `chmod +x scripts/fetch_observations.sh` and schedule it via cron/systemd timer if you want automatic fetches.
 - Reload systemd/Nginx after changes.
+
+## Ubuntu 24.04 deploy with Nginx + Gunicorn (dedicated user)
+Below is an opinionated, copy/paste-friendly setup that keeps the app owned and run by a non-root user.
+
+1) Install OS packages
+```bash
+sudo apt update
+sudo apt install -y python3-venv python3-pip git nginx
+```
+
+2) Create the application user and home
+```bash
+sudo adduser --system --group --home /srv/weatherwise --shell /bin/bash weatherwise
+sudo mkdir -p /srv/weatherwise
+sudo chown weatherwise:weatherwise /srv/weatherwise
+```
+All app files and processes will run as `weatherwise`, not root.
+
+3) Clone the project as that user and create a virtualenv
+```bash
+sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise && git clone https://github.com/<your-org>/django-weatherwise.git app'
+sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && python3 -m venv .venv && source .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt gunicorn'
+```
+
+4) Configure environment/secrets
+- Optional: add `weatherwise/local_settings.py` for DB overrides (defaults to SQLite in `weatherwise/weather.db`).
+- Recommended: create `/srv/weatherwise/app/.env` (owned by `weatherwise`) for settings consumed by systemd:
+```
+DJANGO_SETTINGS_MODULE=weatherwise.settings
+DJANGO_SECRET_KEY=change-me
+DJANGO_ALLOWED_HOSTS=example.com
+DJANGO_DEBUG=False
+```
+
+5) Prepare the database and static files (still as `weatherwise`)
+```bash
+sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && source .venv/bin/activate && python weatherwise/manage.py migrate && python weatherwise/manage.py collectstatic --noinput'
+```
+
+6) Systemd service running as the dedicated user
+```bash
+sudo tee /etc/systemd/system/weatherwise.service >/dev/null <<'EOF'
+[Unit]
+Description=WeatherWise Gunicorn
+After=network.target
+
+[Service]
+User=weatherwise
+Group=weatherwise
+WorkingDirectory=/srv/weatherwise/app
+EnvironmentFile=/srv/weatherwise/app/.env
+RuntimeDirectory=weatherwise
+RuntimeDirectoryMode=0755
+ExecStart=/srv/weatherwise/app/.venv/bin/gunicorn weatherwise.wsgi:application --bind unix:/run/weatherwise/gunicorn.sock --workers 3 --timeout 30
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now weatherwise
+sudo systemctl status weatherwise --no-pager
+```
+
+7) Nginx site pointing to the unix socket
+```bash
+sudo tee /etc/nginx/sites-available/weatherwise >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name example.com;
+
+    location /static/ {
+        alias /srv/weatherwise/app/weatherwise/staticfiles/;
+    }
+
+    location / {
+        proxy_pass http://unix:/run/weatherwise/gunicorn.sock:;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+sudo ln -s /etc/nginx/sites-available/weatherwise /etc/nginx/sites-enabled/weatherwise
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+8) Final app setup tasks (as `weatherwise`)
+```bash
+sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && source .venv/bin/activate && python weatherwise/manage.py createsuperuser'
+```
+Optional: schedule `scripts/fetch_observations.sh` via cron/systemd timer using `sudo -u weatherwise`.
+
+At this point the app runs via Gunicorn as the `weatherwise` user, proxied by Nginx on port 80. Update DNS for `example.com`, and repeat steps 3–5 for code updates, followed by `sudo systemctl restart weatherwise`.
