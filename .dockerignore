@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.log
+*.egg-info
+.git
+.gitignore
+node_modules
+dist
+build
+weatherwise/staticfiles

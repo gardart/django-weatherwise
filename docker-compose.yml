@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    command: ["gunicorn", "weatherwise.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "30"]
+    environment:
+      DJANGO_SECRET_KEY: change-me
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_DEBUG: "False"
+      DJANGO_DB_PATH: /data/weather.db
+    volumes:
+      - weatherwise_data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    command: ["sh", "scripts/hourly_observations.sh"]
+    environment:
+      DJANGO_SECRET_KEY: change-me
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+      DJANGO_DEBUG: "False"
+      DJANGO_DB_PATH: /data/weather.db
+      FETCH_INTERVAL: "3600"
+      ADMIN_USERNAME: admin
+      ADMIN_EMAIL: admin@example.com
+      STATION_CODE: "1"
+      STATION_NAME: "Reykjavík"
+      STATION_LAT: "64.12888"
+      STATION_LON: "-21.90819"
+      STATION_ELEVATION: "60.2"
+      STATION_SOURCE: "0-20000-0-04030"
+    depends_on:
+      - web
+    volumes:
+      - weatherwise_data:/data
+    restart: unless-stopped
+
+volumes:
+  weatherwise_data:
