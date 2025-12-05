@@ -142,17 +142,20 @@ sudo adduser --system --group --home /srv/weatherwise --shell /bin/bash weatherw
 sudo mkdir -p /srv/weatherwise
 sudo chown weatherwise:weatherwise /srv/weatherwise
 ```
-All app files and processes will run as `weatherwise`, not root.
 
 3) Clone the project as that user and create a virtualenv
 ```bash
-sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise && git clone https://github.com/<your-org>/django-weatherwise.git app'
-sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && python3 -m venv .venv && source .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt gunicorn'
+sudo su - weatherwise
+cd ~
+git clone https://github.com/gardart/django-weatherwise.git
+cd django-weatherwise
+python3 -m venv .venv && source .venv/bin/activate
+pip install --upgrade pip && pip install -r requirements.txt gunicorn
 ```
 
 4) Configure environment/secrets
 - Optional: add `weatherwise/local_settings.py` for DB overrides (defaults to SQLite in `weatherwise/weather.db`).
-- Recommended: create `/srv/weatherwise/app/.env` (owned by `weatherwise`) for settings consumed by systemd:
+- Recommended: create `/srv/weatherwise/django-weatherwise/.env` (owned by `weatherwise`) for settings consumed by systemd:
 ```
 DJANGO_SETTINGS_MODULE=weatherwise.settings
 DJANGO_SECRET_KEY=change-me
@@ -162,9 +165,13 @@ DJANGO_DEBUG=False
 
 5) Prepare the database and static files (still as `weatherwise`)
 ```bash
-sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && source .venv/bin/activate && python weatherwise/manage.py migrate && python weatherwise/manage.py collectstatic --noinput'
+cd /srv/weatherwise/django-weatherwise
+source .venv/bin/activate
+python weatherwise/manage.py migrate
+python weatherwise/manage.py collectstatic --noinput
 ```
 
+As system admin user create this systemd file
 6) Systemd service running as the dedicated user
 ```bash
 sudo tee /etc/systemd/system/weatherwise.service >/dev/null <<'EOF'
@@ -189,7 +196,7 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now weatherwise
-sudo systemctl status weatherwise --no-pager
+sudo systemctl status weatherwise
 ```
 
 7) Nginx site pointing to the unix socket
@@ -220,6 +227,10 @@ sudo systemctl reload nginx
 
 8) Final app setup tasks (as `weatherwise`)
 ```bash
+sudo su - weatherwise
+cd /srv/weatherwise/django-weatherwise
+source .venv/bin/activate
+python weatherwise/manage.py migrate
 sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && source .venv/bin/activate && python weatherwise/manage.py createsuperuser'
 ```
 Optional: schedule `scripts/fetch_observations.sh` via cron/systemd timer using `sudo -u weatherwise`.
