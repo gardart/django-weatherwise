@@ -2,3 +2,4 @@ Django>=5.1,<5.2
 psycopg2-binary>=2.9
 ephem>=4.1
 python-dateutil>=2.9
+whitenoise>=6.7

@@ -17,6 +17,8 @@ BaseContext.__copy__ = _basecontext_copy
 
 
 BASE_DIR = Path(__file__).resolve().parent
+# Allow overriding the SQLite location (e.g., for Docker volume mounts).
+DB_PATH = Path(os.environ.get("DJANGO_DB_PATH", BASE_DIR / "weather.db"))
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
@@ -35,6 +37,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -66,17 +69,19 @@ WSGI_APPLICATION = "weatherwise.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "weather.db",
+        "NAME": DB_PATH,
     }
 }
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "America/Chicago"
+# Default to Iceland/UTC-friendly timezone; allow override via env.
+TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Atlantic/Reykjavik")
 USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = []
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"

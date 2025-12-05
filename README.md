@@ -67,172 +67,48 @@ Example cron entry to run hourly (adjust cadence as needed):
 0 * * * * /path/to/django-weatherwise/scripts/fetch_observations.sh >> /var/log/weatherwise.log 2>&1
 ```
 
+## Docker Compose (app + hourly fetcher)
+Quick way to run the app and a sidecar that pulls new observations every hour. Uses SQLite stored on a Docker volume.
+
+```bash
+# Build and start
+docker compose up --build -d
+
+# Stop
+docker compose down
+```
+
+Defaults (override in `docker-compose.yml` or with `--env-file`):
+- DB path: `/data/weather.db` (persisted in `weatherwise_data` volume)
+- App: Gunicorn on `0.0.0.0:8000` (exposed to host)
+- Scheduler: runs `get_weather_observations` every 3600s (`FETCH_INTERVAL` to change)
+- Env: `DJANGO_SECRET_KEY=change-me`, `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1`, `DJANGO_DEBUG=False`
+- Static files are served by WhiteNoise (no extra reverse proxy needed).
+- On scheduler start we seed/update a default station and do an initial fetch. Override via envs (`STATION_CODE`, `STATION_NAME`, `STATION_LAT`, `STATION_LON`, `STATION_ELEVATION`, `STATION_SOURCE`).
+- Superuser auto-created on web start: set `ADMIN_USERNAME`, `ADMIN_EMAIL`; leave `ADMIN_PASSWORD` empty to auto-generate (password is printed in web container logs on first create).
+- Use an external host path for the DB volume by replacing the volume lines in `docker-compose.yml` with `- /opt/weatherwise:/data` for both `web` and `scheduler`, and remove the `weatherwise_data` volume declaration.
+
+If you want to inspect the database on the host:
+```bash
+docker compose exec web python weatherwise/manage.py dbshell
+```
+
+### Podman Compose (rootless-friendly)
+Same stack using Podman:
+```bash
+podman compose -f podman-compose.yml up --build -d
+# Stop
+podman compose -f podman-compose.yml down
+```
+Notes:
+- Volume `weatherwise_data` is created automatically and stores `/data/weather.db`.
+- If running rootless, ensure your user can bind to port 8000 or adjust the mapping.
+- Environment variables mirror the Docker Compose setup; override via `-f` overlays or `--env-file`.
+- Scheduler seeds the default Reykjavík station on start and runs an initial fetch (envs configurable as above).
+- Superuser auto-created in the web container; password is logged if `ADMIN_PASSWORD` is unset.
+- To bind the DB to a host path, change both service volume entries in `podman-compose.yml` to `- /opt/weatherwise:/data` and remove the `weatherwise_data` volume at the bottom.
+
 ## Notes
 - The Icelandic XML weather service data is parsed with `weatherwise/weatherwane/management/commands/pywsoi.py`.
 - The chart view in `weatherwane/charts/views.py` expects `django-chartit` (or a compatible fork) to be installed. Install it separately if you need the chart page. 
 - The `Observation.updatemetar` helper requires the `python-metar` package; it is not pinned in `requirements.txt` because compatibility with Django 5/Python 3 may vary.
-
-## Deploying with Nginx + Gunicorn
-
-Minimal production checklist:
-- Set environment variables: `DJANGO_SETTINGS_MODULE=weatherwise.settings`, `DJANGO_SECRET_KEY=...`, `DJANGO_ALLOWED_HOSTS=example.com`, `DJANGO_DEBUG=False`.
-- Install production deps (plus `gunicorn`): `pip install -r requirements.txt gunicorn`.
-- Migrate: `python weatherwise/manage.py migrate`.
-- Collect static files: `python weatherwise/manage.py collectstatic`.
-- Run Gunicorn: `gunicorn weatherwise.wsgi:application --bind 127.0.0.1:8000` (or a unix socket).
-
-Example systemd service (adjust paths/users):
-```
-[Unit]
-Description=Gunicorn for django-weatherwise
-After=network.target
-
-[Service]
-User=www-data
-Group=www-data
-WorkingDirectory=/path/to/django-weatherwise
-Environment="DJANGO_SETTINGS_MODULE=weatherwise.settings"
-Environment="DJANGO_SECRET_KEY=change-me"
-Environment="DJANGO_ALLOWED_HOSTS=example.com"
-Environment="DJANGO_DEBUG=False"
-ExecStart=/path/to/django-weatherwise/.venv/bin/gunicorn weatherwise.wsgi:application --bind unix:/run/weatherwise.sock --workers 3
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Example Nginx server block (static served directly, app proxied to Gunicorn):
-```
-server {
-    listen 80;
-    server_name example.com;
-
-    # Static files
-    location /static/ {
-        alias /path/to/django-weatherwise/weatherwise/staticfiles/;
-    }
-
-    location / {
-        proxy_pass http://unix:/run/weatherwise.sock;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Don’t forget to:
-- `chmod +x scripts/fetch_observations.sh` and schedule it via cron/systemd timer if you want automatic fetches.
-- Reload systemd/Nginx after changes.
-
-## Ubuntu 24.04 deploy with Nginx + Gunicorn (dedicated user)
-Below is an opinionated, copy/paste-friendly setup that keeps the app owned and run by a non-root user.
-
-1) Install OS packages
-```bash
-sudo apt update
-sudo apt install -y python3-venv python3-pip git nginx
-```
-
-2) Create the application user and home
-```bash
-sudo adduser --system --group --home /srv/weatherwise --shell /bin/bash weatherwise
-sudo mkdir -p /srv/weatherwise
-sudo chown weatherwise:weatherwise /srv/weatherwise
-```
-
-3) Clone the project as that user and create a virtualenv
-```bash
-sudo su - weatherwise
-cd ~
-git clone https://github.com/gardart/django-weatherwise.git
-cd django-weatherwise
-python3 -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip && pip install -r requirements.txt gunicorn
-```
-
-4) Configure environment/secrets
-- Optional: add `weatherwise/local_settings.py` for DB overrides (defaults to SQLite in `weatherwise/weather.db`).
-- Recommended: create `/srv/weatherwise/django-weatherwise/.env` (owned by `weatherwise`) for settings consumed by systemd:
-```
-DJANGO_SETTINGS_MODULE=weatherwise.settings
-DJANGO_SECRET_KEY=change-me
-DJANGO_ALLOWED_HOSTS=example.com
-DJANGO_DEBUG=False
-```
-
-5) Prepare the database and static files (still as `weatherwise`)
-```bash
-cd /srv/weatherwise/django-weatherwise
-source .venv/bin/activate
-python weatherwise/manage.py migrate
-python weatherwise/manage.py collectstatic --noinput
-```
-
-As system admin user create this systemd file
-6) Systemd service running as the dedicated user
-```bash
-sudo tee /etc/systemd/system/weatherwise.service >/dev/null <<'EOF'
-[Unit]
-Description=WeatherWise Gunicorn
-After=network.target
-
-[Service]
-User=weatherwise
-Group=weatherwise
-WorkingDirectory=/srv/weatherwise/app
-EnvironmentFile=/srv/weatherwise/app/.env
-RuntimeDirectory=weatherwise
-RuntimeDirectoryMode=0755
-ExecStart=/srv/weatherwise/app/.venv/bin/gunicorn weatherwise.wsgi:application --bind unix:/run/weatherwise/gunicorn.sock --workers 3 --timeout 30
-ExecReload=/bin/kill -s HUP $MAINPID
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now weatherwise
-sudo systemctl status weatherwise
-```
-
-7) Nginx site pointing to the unix socket
-```bash
-sudo tee /etc/nginx/sites-available/weatherwise >/dev/null <<'EOF'
-server {
-    listen 80;
-    server_name example.com;
-
-    location /static/ {
-        alias /srv/weatherwise/app/weatherwise/staticfiles/;
-    }
-
-    location / {
-        proxy_pass http://unix:/run/weatherwise/gunicorn.sock:;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/weatherwise /etc/nginx/sites-enabled/weatherwise
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-8) Final app setup tasks (as `weatherwise`)
-```bash
-sudo su - weatherwise
-cd /srv/weatherwise/django-weatherwise
-source .venv/bin/activate
-python weatherwise/manage.py migrate
-sudo -u weatherwise -H bash -lc 'cd /srv/weatherwise/app && source .venv/bin/activate && python weatherwise/manage.py createsuperuser'
-```
-Optional: schedule `scripts/fetch_observations.sh` via cron/systemd timer using `sudo -u weatherwise`.
-
-At this point the app runs via Gunicorn as the `weatherwise` user, proxied by Nginx on port 80. Update DNS for `example.com`, and repeat steps 3–5 for code updates, followed by `sudo systemctl restart weatherwise`.
